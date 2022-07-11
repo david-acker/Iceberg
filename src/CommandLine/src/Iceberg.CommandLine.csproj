@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.Build" Version="17.2.0" />
+	<PackageReference Include="Microsoft.Build.Locator" Version="1.4.1" />
+	<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0-2.final" />
+	<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.0-2.final" />
+	<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.3.0-2.final" />
+	<PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0-preview.5.22301.12" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0-preview.5.22301.12" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0-preview.5.22301.12" />
+  </ItemGroup>
+
+	<ItemGroup>
+    <ProjectReference Include="..\..\Export\src\Iceberg.Export.csproj" />
+    <ProjectReference Include="..\..\Map\DependencyMapper\src\Iceberg.Map.DependencyMapper.csproj" />
+    <ProjectReference Include="..\..\Map\Metadata\src\Iceberg.Map.Metadata.csproj" />
+  </ItemGroup>
+
+</Project>
