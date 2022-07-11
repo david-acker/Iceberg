@@ -12,11 +12,12 @@ public class Program
     public static async Task Main(string[] args)
     {
         // TODO: Use dotnet-command-line in the future. While testing, can set the values 
-        // using going to Debug > 'Iceberg.CommandLine Deubg Properties' and adding the values to
+        // using going to Debug > 'Iceberg.CommandLine Debug Properties' and adding the values to
         // the 'Command Line Arguments' input box (separated by spaces).
         var solutionPath = args[0];
         var className = args[1];
         var methodName = args[2];
+        var projectName = args[3];
 
         // TODO: Consider moving this into some sort of workspace-specific infrastructure/helper service.
         if (!MSBuildLocator.IsRegistered)
@@ -44,7 +45,8 @@ public class Program
         var matchingMethodEntryPoints = 
             await methodSolutionContext.FindMethodEntryPoints(
                 className, 
-                methodName, 
+                methodName,
+                projectName,
                 cancellationTokenSource.Token);
 
         // TODO: Handle zero or multiple matching entry points based on additional input from the user.

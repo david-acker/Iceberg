@@ -88,6 +88,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
     public async Task<IEnumerable<EntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
         string className, 
         string methodName,
+        string? projectName = null,
         CancellationToken cancellationToken = default)
     {
         Func<MethodDeclarationSyntax, SemanticModel, bool> predicate =
@@ -113,7 +114,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
                     && string.Equals(classSymbol.Name, className, StringComparison.OrdinalIgnoreCase);
             };
 
-        var entryPointMatches = await FindEntryPoints(predicate, cancellationToken);
+        var entryPointMatches = await FindEntryPoints(predicate, projectName, cancellationToken);
 
         return entryPointMatches.DistinctBy(x => x.DisplayName);
     }

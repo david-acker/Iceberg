@@ -117,11 +117,12 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
 
     public async Task<IEnumerable<EntryPoint<T>>> FindEntryPoints(
         Func<T, SemanticModel, bool> predicate,
-        CancellationToken cancellationToken)
+        string? projectName = null,
+        CancellationToken cancellationToken = default)
     {
         var matchingEntryPoints = new ConcurrentBag<EntryPoint<T>>();
 
-        await Parallel.ForEachAsync(GetDocumentsToSearch(cancellationToken),
+        await Parallel.ForEachAsync(GetDocumentsToSearch(projectName, cancellationToken),
             async (documentMetadata, cancellationToken) =>
             {
                 var rootNode = await documentMetadata.SyntaxTree.GetRootAsync(cancellationToken);
@@ -144,9 +145,14 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
     }
 
     private async IAsyncEnumerable<DocumentMetadata> GetDocumentsToSearch(
+        string? projectName = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        foreach (var project in _projects.Values)
+        var projectsToSearch = projectName == null
+            ? _projects.Values
+            : _projects.Values.Where(p => p.Name.Equals(projectName));
+
+        foreach (var project in projectsToSearch)
         {
             foreach (var document in project.Documents
                 .Where(doc => doc.SupportsSyntaxTree && doc.SupportsSyntaxTree))
