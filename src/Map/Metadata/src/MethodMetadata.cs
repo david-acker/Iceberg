@@ -43,11 +43,27 @@ public class MethodMetadata
 
     private static string[] GetNamespaceComponents(string entryPointDisplayName)
     {
-        var searchString = entryPointDisplayName
-            .Split('(')[0]
-            .Split('<')[0];
+        var genericClassTypeParameterEndIndex = entryPointDisplayName.IndexOf(">.");
+        if (genericClassTypeParameterEndIndex != -1)
+        {
+            var genericClassTypeParameterStartIndex =
+                entryPointDisplayName[..genericClassTypeParameterEndIndex].IndexOf('<');
 
-        return searchString.Split('.')[..^2];
+            return entryPointDisplayName[..genericClassTypeParameterStartIndex].Split('.')[..^1];
+        }
+
+        var genericMethodTypeParameterEndIndex = entryPointDisplayName.IndexOf(">(");
+        if (genericMethodTypeParameterEndIndex != -1)
+        {
+            var genericMethodTypeParameterStartIndex =
+                entryPointDisplayName[..genericMethodTypeParameterEndIndex].IndexOf('<');
+
+            return entryPointDisplayName[..genericMethodTypeParameterStartIndex].Split('.')[..^2];
+        }
+
+        return entryPointDisplayName
+            .Split('(')[0]
+            .Split('.')[..^2];
     }
 
     public string SourcePath { get; init; }

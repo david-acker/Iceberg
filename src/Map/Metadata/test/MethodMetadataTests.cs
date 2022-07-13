@@ -34,11 +34,19 @@ public class MethodMetadataTests
         Assert.Equal(expected, actual);
     }
 
-    [Fact]
-    public void NamespaceComponents_ReturnsNamespaceComponents()
+    [Theory]
+    [InlineData("Iceberg.Map.CalculationService.Calculate<int>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService.Calculate<Result<<int>>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService.Calculate<Result<<int, int>>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService.Calculate<Result<<Some.Custom.Type, int>>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService<int>.Calculate<int>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService<Result<int>>.Calculate<int>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService<Result<int, int>>.Calculate<int>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService<Result<Some.Custom.Type, int>>.Calculate<int>(int firstInput, int secondInput)")]
+    [InlineData("Iceberg.Map.CalculationService<Result<Some.Custom.Type, int>>.Calculate<int, Some.Custom.Generic.Type<int>>(int firstInput, int secondInput)")]
+    public void NamespaceComponents_ReturnsNamespaceComponents(string displayName)
     {
         // Arrange
-        var displayName = "Iceberg.Map.CalculationService.Calculate<int>(int firstInput, int secondInput)";
         var methodMetadata = new MethodMetadata(displayName, string.Empty);
 
         var expected = new[] { "Iceberg", "Map" };
