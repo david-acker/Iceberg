@@ -21,12 +21,23 @@ public partial class MethodDependencyMapper
         EntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
+        return await MapUpstream(solutionContext, new[] { methodEntryPoint }, cancellationToken);
+    }
+
+    public async Task<MethodDependencyMap> MapUpstream(
+       MethodSolutionContext solutionContext,
+       IEnumerable<EntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+       CancellationToken cancellationToken = default)
+    {
         Log.UpstreamMethodDependencyMappingStart(_logger);
 
         var methodDependencyMappingContext = new MethodDependencyMappingContext(_loggerFactory, solutionContext);
 
-        await methodDependencyMappingContext.MapEntryPoint(methodEntryPoint, cancellationToken);
-
+        foreach (var entryPoint in methodEntryPoints)
+        {
+            await methodDependencyMappingContext.MapEntryPoint(entryPoint, cancellationToken);
+        }
+        
         Log.UpstreamMethodDependencyMappingEnd(_logger);
 
         return methodDependencyMappingContext.DependencyMap;

@@ -87,19 +87,22 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
 
     public async Task<IEnumerable<EntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
         string className, 
-        string methodName,
+        string? methodName = null,
         string? projectName = null,
         CancellationToken cancellationToken = default)
     {
         Func<MethodDeclarationSyntax, SemanticModel, bool> predicate =
             (MethodDeclarationSyntax syntax, SemanticModel model) =>
             {
-                var methodSymbol = model.GetDeclaredSymbol(syntax);
-                if (methodSymbol == null
-                    || !string.Equals(methodSymbol.Name, methodName, StringComparison.OrdinalIgnoreCase)
-                    || syntax.Parent == null)
+                if (methodName != null)
                 {
-                    return false;
+                    var methodSymbol = model.GetDeclaredSymbol(syntax, cancellationToken);
+                    if (methodSymbol == null
+                        || !string.Equals(methodSymbol.Name, methodName, StringComparison.OrdinalIgnoreCase)
+                        || syntax.Parent == null)
+                    {
+                        return false;
+                    }
                 }
 
                 var parent = syntax.Parent;
@@ -108,7 +111,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
                     return false;
                 }
 
-                var classSymbol = model.GetDeclaredSymbol(parent);
+                var classSymbol = model.GetDeclaredSymbol(parent, cancellationToken);
 
                 return classSymbol != null
                     && string.Equals(classSymbol.Name, className, StringComparison.OrdinalIgnoreCase);
