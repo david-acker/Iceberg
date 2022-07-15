@@ -45,6 +45,18 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
         var concreteMethodSymbolInfo = methodSymbolInfo
             .Except(abstractOrInterfaceMethodSymbolInfo);
 
+        if (entryPoint.Symbol is IMethodSymbol methodSymbol
+            && methodSymbol.IsOverride
+            && methodSymbol.OverriddenMethod is not null)
+        {
+            var overriddenMethodSymbolInfo = abstractOrInterfaceMethodSymbolInfo.FirstOrDefault(x => x.Symbol == methodSymbol.OverriddenMethod);
+            if (overriddenMethodSymbolInfo.Symbol != null)
+            {
+                abstractOrInterfaceMethodSymbolInfo = abstractOrInterfaceMethodSymbolInfo.Where(x => !SymbolEqualityComparer.Default.Equals(x.Symbol, overriddenMethodSymbolInfo.Symbol));
+                concreteMethodSymbolInfo = concreteMethodSymbolInfo.Append(overriddenMethodSymbolInfo).ToList();
+            }
+        }
+
         foreach (var symbolInfo in abstractOrInterfaceMethodSymbolInfo)
         {
             var implementationSymbolsTask = FindImplementations(symbolInfo.Symbol!, cancellationToken);
@@ -54,14 +66,16 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
             var overrideSymbols = await overrideSymbolsTask;
 
             await foreach (var dependencyEntryPoint in ConstructEntryPoints(
-                new[] { implementationSymbols, overrideSymbols}.SelectMany(symbol => symbol)))
+                new[] { implementationSymbols, overrideSymbols}.SelectMany(symbol => symbol),
+                cancellationToken))
             {
                 yield return dependencyEntryPoint;
             }
         }
 
         await foreach (var dependencyEntryPoint in ConstructEntryPoints(
-            concreteMethodSymbolInfo.Select(symbolInfo => symbolInfo.Symbol!)))
+            concreteMethodSymbolInfo.Select(symbolInfo => symbolInfo.Symbol!),
+            cancellationToken))
         {
             yield return dependencyEntryPoint;
         }

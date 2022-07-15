@@ -399,6 +399,72 @@ public class DependencyMapperTests
     }
 
     [Fact]
+    public async Task OverriddenVirtualMethodCallingBaseImplementation()
+    {
+        // Arrange
+        var projectTemplate = new ProjectTemplate
+        {
+            ProjectName = "Project",
+            Documents = new[]
+            {
+                new DocumentTemplate
+                {
+                    DocumentName = "DerivedClass.cs",
+                    Text = @"
+                        public class DerivedClass : BaseClass
+                        {
+                            public override int VirtualMethod()
+                            {
+                                return base.VirtualMethod() + 1;
+                            }
+                        }
+                    "
+                },
+                new DocumentTemplate
+                {
+                    DocumentName = "BaseClass.cs",
+                    Text = @"
+                        public class BaseClass
+                        {
+                            public virtual int VirtualMethod()
+                            {
+                                return 1;
+                            }
+                        }
+                    "
+                }
+            }
+        };
+
+        var expected = new MethodDependencyMap
+        {
+            {
+                new MethodMetadata("DerivedClass.VirtualMethod()", "DerivedClass.cs"),
+                new HashSet<MethodMetadata>
+                {
+                    new MethodMetadata("BaseClass.VirtualMethod()", "BaseClass.cs")
+                }
+            },
+            {
+                new MethodMetadata("BaseClass.VirtualMethod()", "BaseClass.cs"),
+                new HashSet<MethodMetadata>()
+            },
+        };
+
+        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
+
+        // Act + Assert
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("DerivedClass", "VirtualMethod");
+        var selectedEntryPoint = Assert.Single(matchingEntryPoints);
+
+        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+
+        AssertGeneratedDependencyMap(expected, actual);
+    }
+
+    [Fact]
     public async Task OverriddenAbstractMethodOnBaseClass()
     {
         // Arrange
