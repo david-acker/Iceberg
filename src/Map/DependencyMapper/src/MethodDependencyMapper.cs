@@ -18,7 +18,7 @@ public partial class MethodDependencyMapper
 
     public async Task<MethodDependencyMap> MapUpstream(
         MethodSolutionContext solutionContext, 
-        EntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
         return await MapUpstream(solutionContext, new[] { methodEntryPoint }, cancellationToken);
@@ -26,7 +26,7 @@ public partial class MethodDependencyMapper
 
     public async Task<MethodDependencyMap> MapUpstream(
        MethodSolutionContext solutionContext,
-       IEnumerable<EntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+       IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
        CancellationToken cancellationToken = default)
     {
         Log.UpstreamMethodDependencyMappingStart(_logger);
@@ -45,7 +45,7 @@ public partial class MethodDependencyMapper
 
     public async Task<MethodDependencyMap> MapDownstream(
         MethodSolutionContext solutionContext,
-        EntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();

@@ -21,7 +21,7 @@ internal partial class MethodDependencyMappingContext
     }
 
     public async Task MapEntryPoint(
-        EntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(methodEntryPoint.DisplayName))
@@ -40,7 +40,7 @@ internal partial class MethodDependencyMappingContext
             methodEntryPoint.DisplayName,
             methodEntryPoint.SemanticModel.SyntaxTree.FilePath);
 
-        var dependencyEntryPoints = new HashSet<EntryPoint<MethodDeclarationSyntax>>();
+        var dependencyEntryPoints = new HashSet<IEntryPoint<MethodDeclarationSyntax>>();
         var dependencyEntryPointMetadata = new HashSet<MethodMetadata>();
 
         await foreach (var dependencyEntryPoint in _solutionContext.FindDependencyEntryPoints(methodEntryPoint, cancellationToken))

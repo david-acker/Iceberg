@@ -40,7 +40,7 @@ public class Program
         // TODO: Hook this up to Console.CancelKeyPress
         var cancellationTokenSource = new CancellationTokenSource();
 
-        var methodSolutionContext = new MethodSolutionContext(logger, solution);
+        var methodSolutionContext = new MethodSolutionContext(logger, new SolutionWrapper(solution));
 
         var matchingMethodEntryPoints =
             await methodSolutionContext.FindMethodEntryPoints(

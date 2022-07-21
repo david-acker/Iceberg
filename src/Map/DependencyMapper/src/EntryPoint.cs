@@ -4,7 +4,17 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper;
 
-public class EntryPoint<T> : IEqualityComparer<EntryPoint<T>> where T : MemberDeclarationSyntax
+public interface IEntryPoint<T> where T : MemberDeclarationSyntax
+{
+    public T SyntaxNode { get; init; }
+    public SemanticModel SemanticModel { get; init; }
+
+    public ISymbol? Symbol { get; init; }
+    public string DisplayName { get; init; }
+}
+
+public class EntryPoint<T> : IEntryPoint<T>,
+    IEqualityComparer<EntryPoint<T>> where T : MemberDeclarationSyntax
 {
     public T SyntaxNode { get; init; }
     public SemanticModel SemanticModel { get; init; }

@@ -1,6 +1,6 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Iceberg.Map.DependencyMapper.Selectors;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
@@ -10,19 +10,28 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
 {
     private readonly ILogger _logger;
 
-    public MethodSolutionContext(ILogger logger, Solution solution) : base(logger, solution)
+    // TODO: Use dependency injection.
+    private readonly IMethodSelector[] _methodSelectors =
+        new IMethodSelector[]
+        {
+            new AbstractOrVirtualMethodSelector(new SymbolFinderWrapper()),
+            new ConcreteMethodSelector(),
+            new OverriddenMethodSelector()
+        };
+
+    public MethodSolutionContext(ILogger logger, ISolutionWrapper solutionWrapper) : base(logger, solutionWrapper)
     {
         _logger = logger;
     }
 
-    public MethodSolutionContext(ILoggerFactory loggerFactory, Solution solution) 
-        : base(loggerFactory, solution)
+    public MethodSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper) 
+        : base(loggerFactory, solutionWrapper)
     {
         _logger = loggerFactory.CreateLogger<MethodSolutionContext>();
     }
 
-    public override async IAsyncEnumerable<EntryPoint<MethodDeclarationSyntax>> FindDependencyEntryPoints(
-        EntryPoint<MethodDeclarationSyntax> entryPoint,
+    public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDependencyEntryPoints(
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (entryPoint.Symbol is null)
@@ -31,75 +40,52 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
             yield break;
         }
 
-        var methodSymbolInfo = entryPoint.SyntaxNode.DescendantNodes()
+        var candidateMethodSymbols = entryPoint.SyntaxNode.DescendantNodes()
             .OfType<IdentifierNameSyntax>()
             .Select(node => entryPoint.SemanticModel.GetSymbolInfo(node))
             .Where(symbolInfo => symbolInfo.Symbol is not null
                 && symbolInfo.Symbol.Kind == SymbolKind.Method
-                && IsAssemblyContainedInSolution(symbolInfo.Symbol.ContainingAssembly.Name));
+                && IsAssemblyContainedInSolution(symbolInfo.Symbol.ContainingAssembly.Name))
+            .Select(symbolInfo => symbolInfo.Symbol!);
 
-        var abstractOrInterfaceMethodSymbolInfo = methodSymbolInfo
-            .Where(symbolInfo => symbolInfo.Symbol!.IsAbstract
-                || symbolInfo.Symbol!.IsVirtual);
-
-        var concreteMethodSymbolInfo = methodSymbolInfo
-            .Except(abstractOrInterfaceMethodSymbolInfo);
-
-        if (entryPoint.Symbol is IMethodSymbol methodSymbol
-            && methodSymbol.IsOverride
-            && methodSymbol.OverriddenMethod is not null)
+        foreach (var selectedMethodSymbolsTask in GetSelectedMethodSymbols(entryPoint, candidateMethodSymbols, cancellationToken))
         {
-            var overriddenMethodSymbolInfo = abstractOrInterfaceMethodSymbolInfo.FirstOrDefault(x => x.Symbol == methodSymbol.OverriddenMethod);
-            if (overriddenMethodSymbolInfo.Symbol != null)
-            {
-                abstractOrInterfaceMethodSymbolInfo = abstractOrInterfaceMethodSymbolInfo.Where(x => !SymbolEqualityComparer.Default.Equals(x.Symbol, overriddenMethodSymbolInfo.Symbol));
-                concreteMethodSymbolInfo = concreteMethodSymbolInfo.Append(overriddenMethodSymbolInfo).ToList();
-            }
-        }
-
-        foreach (var symbolInfo in abstractOrInterfaceMethodSymbolInfo)
-        {
-            var implementationSymbolsTask = FindImplementations(symbolInfo.Symbol!, cancellationToken);
-            var overrideSymbolsTask = FindOverrides(symbolInfo.Symbol!, cancellationToken);
-
-            var implementationSymbols = await implementationSymbolsTask;
-            var overrideSymbols = await overrideSymbolsTask;
-
-            await foreach (var dependencyEntryPoint in ConstructEntryPoints(
-                new[] { implementationSymbols, overrideSymbols}.SelectMany(symbol => symbol),
-                cancellationToken))
+            await foreach (var dependencyEntryPoint in ConstructEntryPoints(await selectedMethodSymbolsTask, cancellationToken))
             {
                 yield return dependencyEntryPoint;
             }
         }
 
-        await foreach (var dependencyEntryPoint in ConstructEntryPoints(
-            concreteMethodSymbolInfo.Select(symbolInfo => symbolInfo.Symbol!),
-            cancellationToken))
-        {
-            yield return dependencyEntryPoint;
-        }
-
         yield break;
     }
 
-    private async Task<IEnumerable<ISymbol>> FindImplementations(
-        ISymbol symbol,
-        CancellationToken cancellationToken = default)
+    private IEnumerable<Task<IEnumerable<ISymbol>>> GetSelectedMethodSymbols(
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        IEnumerable<ISymbol> candidateMethodSymbols,
+        CancellationToken cancellationToken)
     {
-        Log.FindingImplementations(_logger, symbol.Name);
-        return await SymbolFinder.FindImplementationsAsync(symbol, Solution, cancellationToken: cancellationToken);
+        static Task<IEnumerable<ISymbol>> InvokeSelector(
+            IMethodSelector methodSelector,
+            IEntryPoint<MethodDeclarationSyntax> entryPoint,
+            IEnumerable<ISymbol> candidateMethodSymbols,
+            ISolutionWrapper solutionWrapper,
+            CancellationToken cancellationToken)
+        {
+            switch (methodSelector)
+            {
+                case IMethodImplementationSelector methodImplementationSelector:
+                    return methodImplementationSelector.GetSymbols(entryPoint, candidateMethodSymbols, solutionWrapper, cancellationToken);
+                case ISimpleMethodSelector simpleMethodSelector:
+                    return Task.FromResult(simpleMethodSelector.GetSymbols(entryPoint, candidateMethodSymbols));
+                default:
+                    return Task.FromResult(new List<ISymbol>().AsEnumerable());
+            }
+        }
+
+        return _methodSelectors.Select(selector => InvokeSelector(selector, entryPoint, candidateMethodSymbols, SolutionWrapper, cancellationToken));
     }
 
-    private async Task<IEnumerable<ISymbol>> FindOverrides(
-        ISymbol symbol, 
-        CancellationToken cancellationToken = default)
-    {
-        Log.FindingOverrides(_logger, symbol.Name);
-        return await SymbolFinder.FindOverridesAsync(symbol, Solution, cancellationToken: cancellationToken);
-    }
-
-    public async Task<IEnumerable<EntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
+    public async Task<IEnumerable<IEntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
         string className, 
         string? methodName = null,
         string? projectName = null,
@@ -125,7 +111,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
                     return false;
                 }
 
-                var classSymbol = model.GetDeclaredSymbol(parent, cancellationToken);
+                var classSymbol = model.GetDeclaredSymbol(parent!, cancellationToken);
 
                 return classSymbol != null
                     && string.Equals(classSymbol.Name, className, StringComparison.OrdinalIgnoreCase);

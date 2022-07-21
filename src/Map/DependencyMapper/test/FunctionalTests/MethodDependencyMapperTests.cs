@@ -2,11 +2,6 @@
 using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
 using Iceberg.Map.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Iceberg.Map.DependencyMapper.FunctionalTests;
 
@@ -61,7 +56,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -128,7 +123,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -206,7 +201,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -257,7 +252,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -325,7 +320,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -386,7 +381,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -452,7 +447,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -508,7 +503,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -573,7 +568,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -660,7 +655,7 @@ public class DependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, workspace.CurrentSolution);
+        var solutionContext = new MethodSolutionContext(NullLoggerFactory.Instance, new SolutionWrapper(workspace.CurrentSolution));
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert

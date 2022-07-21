@@ -1,5 +1,4 @@
-﻿using Iceberg.Map.Metadata;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -10,39 +9,39 @@ namespace Iceberg.Map.DependencyMapper.Context;
 public abstract partial class BaseMemberSolutionContext<T> where T : MemberDeclarationSyntax
 {
     private readonly ILogger _logger;
-    protected readonly Solution Solution;
+    protected readonly ISolutionWrapper SolutionWrapper;
 
     private readonly IDictionary<string, Project> _projects = new Dictionary<string, Project>();
 
-    public BaseMemberSolutionContext(ILoggerFactory loggerFactory, Solution solution)
+    public BaseMemberSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper)
     {
         _logger = loggerFactory.CreateLogger<BaseMemberSolutionContext<T>>();
-        Solution = solution;
+        SolutionWrapper = solutionWrapper;
 
-        foreach (var project in Solution.Projects)
+        foreach (var project in SolutionWrapper.Projects)
         {
             _projects[project.AssemblyName] = project;
         }
     }
 
-    public BaseMemberSolutionContext(ILogger logger, Solution solution)
+    public BaseMemberSolutionContext(ILogger logger, ISolutionWrapper solutionWrapper)
     {
         _logger = logger;
-        Solution = solution;
+        SolutionWrapper = solutionWrapper;
 
-        foreach (var project in Solution.Projects)
+        foreach (var project in SolutionWrapper.Projects)
         {
             _projects[project.AssemblyName] = project;
         }
     }
 
-    public abstract IAsyncEnumerable<EntryPoint<T>> FindDependencyEntryPoints(
-        EntryPoint<T> entryPoint,
+    public abstract IAsyncEnumerable<IEntryPoint<T>> FindDependencyEntryPoints(
+        IEntryPoint<T> entryPoint,
         CancellationToken cancellationToken = default);
 
     protected bool IsAssemblyContainedInSolution(string assemblyName) => _projects.ContainsKey(assemblyName);
 
-    protected async IAsyncEnumerable<EntryPoint<T>> ConstructEntryPoints(
+    protected async IAsyncEnumerable<IEntryPoint<T>> ConstructEntryPoints(
         IEnumerable<ISymbol> symbols,
         [EnumeratorCancellation] CancellationToken cancellationToken = default) 
     {
@@ -61,7 +60,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
                 continue;
             }
 
-            var declaringSyntaxNode = await symbol.DeclaringSyntaxReferences.First().GetSyntaxAsync();
+            var declaringSyntaxNode = await symbol.DeclaringSyntaxReferences.First().GetSyntaxAsync(cancellationToken);
             if (declaringSyntaxNode is not T derivedDeclaringSyntaxNode)
             {
                 Log.IncorrectSyntaxType(_logger, typeof(T).Name);
@@ -115,7 +114,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
         }
     }
 
-    public async Task<IEnumerable<EntryPoint<T>>> FindEntryPoints(
+    public async Task<IEnumerable<IEntryPoint<T>>> FindEntryPoints(
         Func<T, SemanticModel, bool> predicate,
         string? projectName = null,
         CancellationToken cancellationToken = default)
