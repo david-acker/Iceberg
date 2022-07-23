@@ -1,8 +1,10 @@
 ﻿using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
 
+[ExcludeFromCodeCoverage]
 public static class TestUtilities
 {
     public static ProjectInfo CreateProjectInfo(string projectName)

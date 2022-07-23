@@ -1,11 +1,14 @@
 ﻿using Iceberg.Map.DependencyMapper.Selectors;
+using Iceberg.Map.DependencyMapper.Wrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace Iceberg.Map.DependencyMapper.Context;
 
+// TODO: Consider splitting up into separate solution contexts for upstream and downstream mapping (e.g. UpstreamMethodSolutionContext)?
 public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<MethodDeclarationSyntax>
 {
     private readonly ILogger _logger;
@@ -14,23 +17,28 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
     private readonly IMethodSelector[] _methodSelectors =
         new IMethodSelector[]
         {
-            new AbstractOrVirtualMethodSelector(new SymbolFinderWrapper()),
+            new AbstractOrVirtualMethodSelector(
+                new SymbolEqualityComparerWrapper(),
+                new SymbolFinderWrapper()),
             new ConcreteMethodSelector(),
-            new OverriddenMethodSelector()
+            new OverriddenMethodSelector(
+                new SymbolEqualityComparerWrapper())
         };
+
+    private readonly ISymbolFinderWrapper _symbolFinder = new SymbolFinderWrapper();
 
     public MethodSolutionContext(ILogger logger, ISolutionWrapper solutionWrapper) : base(logger, solutionWrapper)
     {
         _logger = logger;
     }
 
-    public MethodSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper) 
+    public MethodSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper)
         : base(loggerFactory, solutionWrapper)
     {
         _logger = loggerFactory.CreateLogger<MethodSolutionContext>();
     }
 
-    public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDependencyEntryPoints(
+    public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindUpstreamDependencyEntryPoints(
         IEntryPoint<MethodDeclarationSyntax> entryPoint,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -83,6 +91,81 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
         }
 
         return _methodSelectors.Select(selector => InvokeSelector(selector, entryPoint, candidateMethodSymbols, SolutionWrapper, cancellationToken));
+    }
+
+    public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDownstreamDependencyEntryPoints(
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (entryPoint.Symbol is null)
+        {
+            Log.NoDeclaredSymbol(_logger);
+            yield break;
+        }
+
+        var referencedSymbols = await _symbolFinder.FindReferences(entryPoint.Symbol, SolutionWrapper, cancellationToken);
+
+        await foreach (var consumingMethodSymbol in GetConsumingMethodSymbols(referencedSymbols, SolutionWrapper, cancellationToken))
+        {
+            if (consumingMethodSymbol is null)
+                continue;
+
+            await foreach (var dependencyEntryPoint in ConstructEntryPoints(new[] { consumingMethodSymbol }, cancellationToken))
+            {
+                yield return dependencyEntryPoint;
+            }
+        }
+    }
+
+    private async IAsyncEnumerable<ISymbol?> GetConsumingMethodSymbols(
+        IEnumerable<ReferencedSymbol> referencedSymbols,
+        ISolutionWrapper solutionWrapper,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        foreach (var referencedSymbol in referencedSymbols)
+        {
+            // TODO: Use an injected "ProjectFilter" to handle which projects are excluded.
+            var sourceLocations = referencedSymbol.Locations.Where(location => !location.Document.Project.Name.Contains("Test"));
+
+            foreach (var sourceLocation in sourceLocations)
+            {
+                yield return await GetConsumingMethodSymbol(sourceLocation, solutionWrapper, cancellationToken);
+            }
+        }
+    }
+
+    private async Task<ISymbol?> GetConsumingMethodSymbol(
+        ReferenceLocation referenceLocation,
+        ISolutionWrapper solutionWrapper,
+        CancellationToken cancellationToken = default)
+    {
+        var location = referenceLocation.Location;
+        if (location is null)
+            return null;
+
+        var rootTask = location.SourceTree?.GetRootAsync(cancellationToken);
+        if (rootTask is null)
+            return null;
+
+        var referenceNode = (await rootTask).FindNode(location.SourceSpan);
+        if (referenceNode is null)
+            return null;
+
+        var containingMethodDeclarationNode =
+            referenceNode.FirstAncestorOrSelf((SyntaxNode syntaxNode) => syntaxNode is MethodDeclarationSyntax) as MethodDeclarationSyntax;
+        if (containingMethodDeclarationNode is null
+            || containingMethodDeclarationNode == referenceNode)
+            return null;
+
+        var containingDocument = solutionWrapper.Solution.GetDocument(containingMethodDeclarationNode.SyntaxTree);
+        if (containingDocument is null)
+            return null;
+
+        var semanticModel = await containingDocument.GetSemanticModelAsync(cancellationToken);
+        if (semanticModel is null)
+            return null;
+
+        return semanticModel.GetDeclaredSymbol(containingMethodDeclarationNode, cancellationToken);
     }
 
     public async Task<IEnumerable<IEntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(

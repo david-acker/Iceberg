@@ -1,5 +1,8 @@
-﻿namespace Iceberg.Map.Metadata.Tests;
+﻿using System.Diagnostics.CodeAnalysis;
 
+namespace Iceberg.Map.Metadata.Tests;
+
+[ExcludeFromCodeCoverage]
 public class MethodMetadataTests
 {
     [Fact]

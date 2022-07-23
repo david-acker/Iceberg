@@ -2,9 +2,11 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Moq;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper.UnitTests.Selectors;
 
+[ExcludeFromCodeCoverage]
 public class ConcreteMethodSelectorTests
 {
     [Fact]
@@ -15,8 +17,8 @@ public class ConcreteMethodSelectorTests
 
         var candidateSymbols = new List<Mock<ISymbol>>
         {
-            GetMockSymbol(isAbstract: true),
-            GetMockSymbol(isAbstract: false)
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: true),
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: false)
         };
 
         var selector = new ConcreteMethodSelector();
@@ -29,16 +31,5 @@ public class ConcreteMethodSelectorTests
         // Assert
         Assert.NotEmpty(results);
         Assert.True(results.All(x => !x.IsAbstract));
-    }
-
-    // TODO: Move to shared test utilities class.
-    private static Mock<ISymbol> GetMockSymbol(bool isAbstract = false, bool isVirtual = false)
-    {
-        var mockSymbol = new Mock<ISymbol>();
-
-        mockSymbol.SetupGet(x => x.IsAbstract).Returns(isAbstract);
-        mockSymbol.SetupGet(x => x.IsVirtual).Returns(isVirtual);
-
-        return mockSymbol;
     }
 }

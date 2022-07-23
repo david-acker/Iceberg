@@ -1,24 +1,31 @@
 ﻿using Iceberg.Map.DependencyMapper.Selectors;
+using Iceberg.Map.DependencyMapper.Wrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Moq;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper.UnitTests.Selectors;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("MicrosoftCodeAnalysisCorrectness", "RS1024:Symbols should be compared for equality", Justification = "<Pending>")]
+[ExcludeFromCodeCoverage]
+[SuppressMessage("MicrosoftCodeAnalysisCorrectness", "RS1024:Symbols should be compared for equality", Justification = "<Pending>")]
 public class AbstractOrVirtualMethodSelectorTests
 {
-    [Fact(Skip = "Issue with SymbolEqualityComparer")]
+    [Fact]
     public async Task GetSymbols_WithImplementations_ReturnsAbstractOrVirtualMethodSymbols()
     {
         // Arrange
         var mockEntryPoint = new Mock<IEntryPoint<MethodDeclarationSyntax>>();
 
+        var mockEntryPointSymbol = TestUtilities.GetMockSymbol<ISymbol>();
+        mockEntryPoint.SetupGet(x => x.Symbol)
+            .Returns(mockEntryPointSymbol.Object);
+
         var candidateSymbols = new List<Mock<ISymbol>>
         {
-            GetMockSymbol(isAbstract: true, isVirtual: false),
-            GetMockSymbol(isAbstract: false, isVirtual: true),
-            GetMockSymbol(isAbstract: false, isVirtual: false)
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: true, isVirtual: false),
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: false, isVirtual: true),
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: false, isVirtual: false)
         };
 
         var matchingCandidateSymbols = candidateSymbols.Take(2);
@@ -28,9 +35,11 @@ public class AbstractOrVirtualMethodSelectorTests
 
         var implementations = new List<Mock<ISymbol>>
         {
-            GetMockSymbol(),
-            GetMockSymbol()
+            TestUtilities.GetMockSymbol<ISymbol>(),
+            TestUtilities.GetMockSymbol<ISymbol>()
         };
+
+        var mockSymbolEqualityComparerWrapper = TestUtilities.GetMockSymbolEqualityComparerWrapper();
 
         var mockSymbolFinderWrapper = new Mock<ISymbolFinderWrapper>();
         mockSymbolFinderWrapper
@@ -38,7 +47,9 @@ public class AbstractOrVirtualMethodSelectorTests
             .ReturnsAsync(implementations.Take(1).Select(x => x.Object))
             .ReturnsAsync(implementations.Skip(1).Take(1).Select(x => x.Object));
 
-        var selector = new AbstractOrVirtualMethodSelector(mockSymbolFinderWrapper.Object);
+        var selector = new AbstractOrVirtualMethodSelector(
+            mockSymbolEqualityComparerWrapper.Object,
+            mockSymbolFinderWrapper.Object);
 
         // Act
         var results = await selector.GetSymbols(
@@ -64,42 +75,57 @@ public class AbstractOrVirtualMethodSelectorTests
                     It.Is<CancellationToken>(y => y == cancellationToken)), Times.Once);
         }
 
+        mockSymbolEqualityComparerWrapper
+            .Verify(x => x.Equals(It.IsAny<ISymbol?>(), It.IsAny<ISymbol?>()), Times.Exactly(implementations.Count));
+
+        foreach (var implementation in implementations)
+        {
+            mockSymbolEqualityComparerWrapper
+                .Verify(x => x.Equals(
+                    It.Is<ISymbol?>(y => y == implementation.Object), 
+                    It.Is<ISymbol?>(y => y == mockEntryPointSymbol.Object)), Times.Once);
+        }
+
         Assert.Equal(implementations.Count, results.Count());
-        Assert.Equal(implementations.Select(x => x.Object).ToHashSet(), results.ToHashSet(), SymbolEqualityComparer.Default);
+        
+        foreach (var implementation in implementations.Select(x => x.Object))
+        {
+            Assert.Contains(results, x => x == implementation);
+        }
     }
 
-    [Fact(Skip = "Issue with SymbolEqualityComparer")]
+    [Fact]
     public async Task GetSymbols_WithImplementions_DoesNotIncludeTheEntryPointItself()
     {
         // Arrange
         var mockEntryPoint = new Mock<IEntryPoint<MethodDeclarationSyntax>>();
 
-        var mockSymbol = GetMockSymbol(isAbstract: true, isVirtual: false);
-
-        var symbol = mockSymbol.Object;
-
+        var mockEntryPointSymbol = TestUtilities.GetMockSymbol<ISymbol>(isAbstract: true, isVirtual: false);
         mockEntryPoint.SetupGet(x => x.Symbol)
-            .Returns(symbol);
+            .Returns(mockEntryPointSymbol.Object);
 
         var mockSolution = new Mock<ISolutionWrapper>();
         var cancellationToken = new CancellationToken();
 
+        var mockSymbolEqualityComparerWrapper = TestUtilities.GetMockSymbolEqualityComparerWrapper();
+
         var mockSymbolFinderWrapper = new Mock<ISymbolFinderWrapper>();
         mockSymbolFinderWrapper
             .Setup(x => x.FindImplementations(It.IsAny<ISymbol>(), It.IsAny<ISolutionWrapper>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { symbol });
+            .ReturnsAsync(new[] { mockEntryPointSymbol.Object });
 
-        var selector = new AbstractOrVirtualMethodSelector(mockSymbolFinderWrapper.Object);
+        var selector = new AbstractOrVirtualMethodSelector(
+            mockSymbolEqualityComparerWrapper.Object,
+            mockSymbolFinderWrapper.Object);
 
         // Act
         var results = await selector.GetSymbols(
             mockEntryPoint.Object,
-            new[] { symbol },
+            new[] { mockEntryPointSymbol.Object },
             mockSolution.Object,
             cancellationToken);
 
         // Assert
-
         mockSymbolFinderWrapper
             .Verify(x => x.FindImplementations(
                 It.IsAny<ISymbol>(),
@@ -108,9 +134,17 @@ public class AbstractOrVirtualMethodSelectorTests
 
         mockSymbolFinderWrapper
             .Verify(x => x.FindImplementations(
-                It.Is<ISymbol>(y => y == mockSymbol.Object),
+                It.Is<ISymbol>(y => y == mockEntryPointSymbol.Object),
                 It.Is<ISolutionWrapper>(y => y == mockSolution.Object),
                 It.Is<CancellationToken>(y => y == cancellationToken)), Times.Once);
+
+        mockSymbolEqualityComparerWrapper
+           .Verify(x => x.Equals(It.IsAny<ISymbol?>(), It.IsAny<ISymbol?>()), Times.Once);
+
+        mockSymbolEqualityComparerWrapper
+            .Verify(x => x.Equals(
+                It.Is<ISymbol?>(y => y == mockEntryPointSymbol.Object), 
+                It.Is<ISymbol?>(y => y == mockEntryPointSymbol.Object)), Times.Once);
 
         Assert.Empty(results);
     }
@@ -123,9 +157,9 @@ public class AbstractOrVirtualMethodSelectorTests
 
         var candidateSymbols = new List<Mock<ISymbol>>
         {
-            GetMockSymbol(isAbstract: true, isVirtual: false),
-            GetMockSymbol(isAbstract: false, isVirtual: true),
-            GetMockSymbol(isAbstract: false, isVirtual: false)
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: true, isVirtual: false),
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: false, isVirtual: true),
+            TestUtilities.GetMockSymbol<ISymbol>(isAbstract: false, isVirtual: false)
         };
 
         var matchingCandidateSymbols = candidateSymbols.Take(2);
@@ -133,12 +167,16 @@ public class AbstractOrVirtualMethodSelectorTests
         var mockSolution = new Mock<ISolutionWrapper>();
         var cancellationToken = new CancellationToken();
 
+        var mockSymbolEqualityComparerWrapper = TestUtilities.GetMockSymbolEqualityComparerWrapper();
+
         var mockSymbolFinderWrapper = new Mock<ISymbolFinderWrapper>();
         mockSymbolFinderWrapper
             .Setup(x => x.FindImplementations(It.IsAny<ISymbol>(), It.IsAny<ISolutionWrapper>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ISymbol>());
 
-        var selector = new AbstractOrVirtualMethodSelector(mockSymbolFinderWrapper.Object);
+        var selector = new AbstractOrVirtualMethodSelector(
+            mockSymbolEqualityComparerWrapper.Object,
+            mockSymbolFinderWrapper.Object);
 
         // Act
         var results = await selector.GetSymbols(
@@ -165,15 +203,5 @@ public class AbstractOrVirtualMethodSelectorTests
         }
 
         Assert.Empty(results);
-    }
-
-    private static Mock<ISymbol> GetMockSymbol(bool isAbstract = false, bool isVirtual = false)
-    {
-        var mockSymbol = new Mock<ISymbol>();
-
-        mockSymbol.SetupGet(x => x.IsAbstract).Returns(isAbstract);
-        mockSymbol.SetupGet(x => x.IsVirtual).Returns(isVirtual);
-
-        return mockSymbol;
     }
 }

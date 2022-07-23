@@ -1,10 +1,13 @@
 ﻿using Iceberg.Map.DependencyMapper.Context;
 using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
+using Iceberg.Map.DependencyMapper.Wrappers;
 using Iceberg.Map.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper.FunctionalTests;
 
+[ExcludeFromCodeCoverage]
 public class DependencyMapperTests
 {
     [Theory]

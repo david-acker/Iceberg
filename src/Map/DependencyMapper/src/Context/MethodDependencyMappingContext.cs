@@ -20,7 +20,7 @@ internal partial class MethodDependencyMappingContext
         _solutionContext = solutionContext;
     }
 
-    public async Task MapEntryPoint(
+    public async Task MapUpstream(
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +43,7 @@ internal partial class MethodDependencyMappingContext
         var dependencyEntryPoints = new HashSet<IEntryPoint<MethodDeclarationSyntax>>();
         var dependencyEntryPointMetadata = new HashSet<MethodMetadata>();
 
-        await foreach (var dependencyEntryPoint in _solutionContext.FindDependencyEntryPoints(methodEntryPoint, cancellationToken))
+        await foreach (var dependencyEntryPoint in _solutionContext.FindUpstreamDependencyEntryPoints(methodEntryPoint, cancellationToken))
         {
             if (dependencyEntryPoints.Any(x => string.Equals(x.DisplayName, dependencyEntryPoint.DisplayName)))
             {
@@ -62,7 +62,53 @@ internal partial class MethodDependencyMappingContext
 
         foreach (var dependencyEntryPoint in dependencyEntryPoints)
         {
-            await MapEntryPoint(dependencyEntryPoint, cancellationToken);
+            await MapUpstream(dependencyEntryPoint, cancellationToken);
+        }
+    }
+
+    public async Task MapDownstream(
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(methodEntryPoint.DisplayName))
+        {
+            Log.InvalidEntryPointName(_logger);
+            return;
+        }
+
+        if (DependencyMap.All(x => string.Equals(x.Key.DisplayName, methodEntryPoint.DisplayName)))
+        {
+            Log.DuplicateMethodEntryPoint(_logger, methodEntryPoint.DisplayName);
+            return;
+        }
+
+        var entryPointMetadata = new MethodMetadata(
+            methodEntryPoint.DisplayName,
+            methodEntryPoint.SemanticModel.SyntaxTree.FilePath);
+
+        var dependencyEntryPoints = new HashSet<IEntryPoint<MethodDeclarationSyntax>>();
+        var dependencyEntryPointMetadata = new HashSet<MethodMetadata>();
+
+        await foreach (var dependencyEntryPoint in _solutionContext.FindDownstreamDependencyEntryPoints(methodEntryPoint, cancellationToken))
+        {
+            if (dependencyEntryPoints.Any(x => string.Equals(x.DisplayName, dependencyEntryPoint.DisplayName)))
+            {
+                Log.DuplicateDependencyMethodEntryPoint(_logger, dependencyEntryPoint.DisplayName);
+                continue;
+            }
+
+            dependencyEntryPoints.Add(dependencyEntryPoint);
+            dependencyEntryPointMetadata.Add(
+                new MethodMetadata(
+                    dependencyEntryPoint.DisplayName,
+                    dependencyEntryPoint.SemanticModel.SyntaxTree.FilePath));
+        }
+
+        DependencyMap[entryPointMetadata] = dependencyEntryPointMetadata;
+
+        foreach (var dependencyEntryPoint in dependencyEntryPoints)
+        {
+            await MapDownstream(dependencyEntryPoint, cancellationToken);
         }
     }
 

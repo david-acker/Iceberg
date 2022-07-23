@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Iceberg.Map.DependencyMapper.Wrappers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -35,7 +36,11 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
         }
     }
 
-    public abstract IAsyncEnumerable<IEntryPoint<T>> FindDependencyEntryPoints(
+    public abstract IAsyncEnumerable<IEntryPoint<T>> FindUpstreamDependencyEntryPoints(
+        IEntryPoint<T> entryPoint,
+        CancellationToken cancellationToken = default);
+
+    public abstract IAsyncEnumerable<IEntryPoint<T>> FindDownstreamDependencyEntryPoints(
         IEntryPoint<T> entryPoint,
         CancellationToken cancellationToken = default);
 

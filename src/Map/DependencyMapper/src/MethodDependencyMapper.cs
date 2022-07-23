@@ -35,7 +35,7 @@ public partial class MethodDependencyMapper
 
         foreach (var entryPoint in methodEntryPoints)
         {
-            await methodDependencyMappingContext.MapEntryPoint(entryPoint, cancellationToken);
+            await methodDependencyMappingContext.MapUpstream(entryPoint, cancellationToken);
         }
         
         Log.UpstreamMethodDependencyMappingEnd(_logger);
@@ -45,10 +45,21 @@ public partial class MethodDependencyMapper
 
     public async Task<MethodDependencyMap> MapDownstream(
         MethodSolutionContext solutionContext,
-        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        Log.DownstreamMethodDependencyMappingStart(_logger);
+
+        var methodDependencyMappingContext = new MethodDependencyMappingContext(_loggerFactory, solutionContext);
+
+        foreach (var entryPoint in methodEntryPoints)
+        {
+            await methodDependencyMappingContext.MapDownstream(entryPoint, cancellationToken);
+        }
+
+        Log.DownstreamMethodDependencyMappingEnd(_logger);
+
+        return methodDependencyMappingContext.DependencyMap;
     }
 
     private static partial class Log
@@ -58,5 +69,11 @@ public partial class MethodDependencyMapper
 
         [LoggerMessage(2, LogLevel.Information, "Upstream method dependency mapping completed.", EventName = "UpstreamMethodDependencyMappingEnd")]
         public static partial void UpstreamMethodDependencyMappingEnd(ILogger logger);
+
+        [LoggerMessage(3, LogLevel.Information, "Downstream method dependency mapping starting.", EventName = "DownstreamMethodDependencyMappingStart")]
+        public static partial void DownstreamMethodDependencyMappingStart(ILogger logger);
+
+        [LoggerMessage(4, LogLevel.Information, "Downstream method dependency mapping completed.", EventName = "DownstreamMethodDependencyMappingEnd")]
+        public static partial void DownstreamMethodDependencyMappingEnd(ILogger logger);
     }
 }

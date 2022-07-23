@@ -1,6 +1,8 @@
 ﻿using Iceberg.Export;
 using Iceberg.Map.DependencyMapper;
 using Iceberg.Map.DependencyMapper.Context;
+using Iceberg.Map.DependencyMapper.Wrappers;
+using Iceberg.Map.Metadata;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ public class Program
         string className = args[1];
         string? methodName = args[2];
         string? projectName = args[3];
+        int? maximumDegreeOfSeparation = null;
 
         // TODO: Consider moving this into some sort of workspace-specific infrastructure/helper service.
         if (!MSBuildLocator.IsRegistered)
@@ -54,10 +57,20 @@ public class Program
 
         var methodDependencyMapper = new MethodDependencyMapper(loggerFactory);
 
-        var upstreamMethodDependencyMap = await methodDependencyMapper.MapUpstream(
+        var methodDependencyMap = await methodDependencyMapper.MapUpstream(
             methodSolutionContext, 
             matchingMethodEntryPoints, 
             cancellationTokenSource.Token);
+
+        if (maximumDegreeOfSeparation > 0)
+        {
+            var entryPointMethodMetadata = methodDependencyMap.Keys
+                .Where(x =>
+                    methodName is null || x.MethodName.StartsWith(methodName)
+                    && x.ClassName.StartsWith(className));
+
+            methodDependencyMap = GetTrimmedDependencyMap(methodDependencyMap, entryPointMethodMetadata, maximumDegreeOfSeparation.Value);
+        }
 
         // TODO: Export this to a more accessible place while testing.
         // Currently written to Iceberg\src\CommandLine\src\bin\Debug\net6.0
@@ -68,9 +81,49 @@ public class Program
             string.IsNullOrWhiteSpace(methodName) 
                 ? className 
                 : $"{className}.{methodName}";
-        var exportedDGML = dgmlBuilderService.ExportDependencyMap(dependencyMapName, upstreamMethodDependencyMap);
+        var exportedDGML = dgmlBuilderService.ExportDependencyMap(dependencyMapName, methodDependencyMap);
 
         exportedDGML.Save(outputFileName);
         logger.LogInformation($"Saved generated dependency map to {outputFileName}");
+    }
+
+    // TODO: Handle this logic in the MapUpstream/MapDownstream methods in BaseMemberSolutionContext
+    // so that dependencies past the maximum distance from the entry point aren't unnecessarily mapped.
+    private static MethodDependencyMap GetTrimmedDependencyMap(
+        MethodDependencyMap generatedMethodDependencyMap,
+        IEnumerable<MethodMetadata> entryPointMethodMetadata,
+        int maximumDegreeOfSeparation)
+    {
+        var trimmedMethodDependencyMap = new MethodDependencyMap();
+
+        foreach (var methodMetadata in entryPointMethodMetadata)
+        {
+            Traverse(generatedMethodDependencyMap, trimmedMethodDependencyMap, methodMetadata, maximumDegreeOfSeparation);
+        }
+
+        return trimmedMethodDependencyMap;
+    }
+
+    private static void Traverse(
+        MethodDependencyMap generatedMethodDependencyMap,
+        MethodDependencyMap trimmedMethodDependencyMap,
+        MethodMetadata entryPointMethodMetadata,
+        int remainingDegreeOfSeparation)
+    {
+        if (trimmedMethodDependencyMap.ContainsKey(entryPointMethodMetadata))
+            return;
+
+        if (remainingDegreeOfSeparation < 1)
+        {
+            trimmedMethodDependencyMap[entryPointMethodMetadata] = new HashSet<MethodMetadata>();
+            return;
+        }
+
+        trimmedMethodDependencyMap[entryPointMethodMetadata] = generatedMethodDependencyMap[entryPointMethodMetadata];
+
+        foreach (var dependencyMethodMetadata in generatedMethodDependencyMap[entryPointMethodMetadata])
+        {
+            Traverse(generatedMethodDependencyMap, trimmedMethodDependencyMap, dependencyMethodMetadata, remainingDegreeOfSeparation);
+        }
     }
 }
