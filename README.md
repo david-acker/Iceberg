@@ -8,7 +8,7 @@ Iceberg is a CLI application used for mapping the code dependencies in C# projec
 
 ### Demo (Iceberg CLI)
 
-![Iceberg CLI Demo](https://github.com/david-acker/Iceberg/tree/main/docs/demo/IcebergCLI.gif)
+![Iceberg CLI Demo](https://github.com/david-acker/Iceberg/blob/main/docs/demo/IcebergCLI.gif)
 
 ### Currently Supports
 
