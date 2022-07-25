@@ -6,6 +6,10 @@ Iceberg
 
 Iceberg is a CLI application used for mapping the code dependencies in C# projects/solutions and generating basic [DGML](https://docs.microsoft.com/en-us/visualstudio/modeling/directed-graph-markup-language-dgml-reference?view=vs-2022) code maps.
 
+### Demo (Iceberg CLI)
+
+![Iceberg CLI Demo](https://github.com/david-acker/Iceberg/tree/main/docs/demo/IcebergCLI.gif)
+
 ### Currently Supports
 
 - [x] Upstream Method Dependencies (partial support)
