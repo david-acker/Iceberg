@@ -25,17 +25,6 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
         }
     }
 
-    public BaseMemberSolutionContext(ILogger logger, ISolutionWrapper solutionWrapper)
-    {
-        _logger = logger;
-        SolutionWrapper = solutionWrapper;
-
-        foreach (var project in SolutionWrapper.Projects)
-        {
-            _projects[project.AssemblyName] = project;
-        }
-    }
-
     public abstract IAsyncEnumerable<IEntryPoint<T>> FindUpstreamDependencyEntryPoints(
         IEntryPoint<T> entryPoint,
         CancellationToken cancellationToken = default);

@@ -8,34 +8,38 @@ using System.Runtime.CompilerServices;
 
 namespace Iceberg.Map.DependencyMapper.Context;
 
+public interface IMethodSolutionContext
+{
+    IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindUpstreamDependencyEntryPoints(
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDownstreamDependencyEntryPoints(
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<IEntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
+        string className,
+        string? methodName = null,
+        string? projectName = null,
+        CancellationToken cancellationToken = default);
+}
+
 // TODO: Consider splitting up into separate solution contexts for upstream and downstream mapping (e.g. UpstreamMethodSolutionContext)?
-public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<MethodDeclarationSyntax>
+public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<MethodDeclarationSyntax>, IMethodSolutionContext
 {
     private readonly ILogger _logger;
+    private readonly ISymbolFinderWrapper _symbolFinder;
+    private readonly IEnumerable<IMethodSelector> _methodSelectors;
 
-    // TODO: Use dependency injection.
-    private readonly IMethodSelector[] _methodSelectors =
-        new IMethodSelector[]
-        {
-            new AbstractOrVirtualMethodSelector(
-                new SymbolEqualityComparerWrapper(),
-                new SymbolFinderWrapper()),
-            new ConcreteMethodSelector(),
-            new OverriddenMethodSelector(
-                new SymbolEqualityComparerWrapper())
-        };
-
-    private readonly ISymbolFinderWrapper _symbolFinder = new SymbolFinderWrapper();
-
-    public MethodSolutionContext(ILogger logger, ISolutionWrapper solutionWrapper) : base(logger, solutionWrapper)
-    {
-        _logger = logger;
-    }
-
-    public MethodSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper)
-        : base(loggerFactory, solutionWrapper)
+    public MethodSolutionContext(ILoggerFactory loggerFactory,
+        IEnumerable<IMethodSelector> methodSelectors,
+        ISolutionWrapper solution,
+        ISymbolFinderWrapper symbolFinder) : base(loggerFactory, solution)
     {
         _logger = loggerFactory.CreateLogger<MethodSolutionContext>();
+        _methodSelectors = methodSelectors;
+        _symbolFinder = symbolFinder;
     }
 
     public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindUpstreamDependencyEntryPoints(

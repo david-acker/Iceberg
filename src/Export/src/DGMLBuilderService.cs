@@ -3,7 +3,15 @@ using System.Xml.Linq;
 
 namespace Iceberg.Export;
 
-public class DGMLBuilderService
+public interface IDGMLBuilderService
+{
+    public XElement ExportDependencyMap(
+        string entryPointName,
+        MethodDependencyMap dependencyMap,
+        int namespaceSpecificity = 2);
+}
+
+public class DGMLBuilderService : IDGMLBuilderService
 {
     public XElement ExportDependencyMap(
         string entryPointName,

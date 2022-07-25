@@ -5,7 +5,25 @@ using Microsoft.Extensions.Logging;
 
 namespace Iceberg.Map.DependencyMapper;
 
-public partial class MethodDependencyMapper
+public interface IMethodDependencyMapper
+{
+    Task<MethodDependencyMap> MapUpstream(
+        IMethodSolutionContext solutionContext,
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        CancellationToken cancellationToken = default);
+
+    Task<MethodDependencyMap> MapUpstream(
+        IMethodSolutionContext solutionContext,
+        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+        CancellationToken cancellationToken = default);
+
+    Task<MethodDependencyMap> MapDownstream(
+        IMethodSolutionContext solutionContext,
+        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed partial class MethodDependencyMapper : IMethodDependencyMapper
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MethodDependencyMapper> _logger;
@@ -17,7 +35,7 @@ public partial class MethodDependencyMapper
     }
 
     public async Task<MethodDependencyMap> MapUpstream(
-        MethodSolutionContext solutionContext, 
+        IMethodSolutionContext solutionContext, 
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
         CancellationToken cancellationToken = default)
     {
@@ -25,7 +43,7 @@ public partial class MethodDependencyMapper
     }
 
     public async Task<MethodDependencyMap> MapUpstream(
-       MethodSolutionContext solutionContext,
+       IMethodSolutionContext solutionContext,
        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
        CancellationToken cancellationToken = default)
     {
@@ -44,7 +62,7 @@ public partial class MethodDependencyMapper
     }
 
     public async Task<MethodDependencyMap> MapDownstream(
-        MethodSolutionContext solutionContext,
+        IMethodSolutionContext solutionContext,
         IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
         CancellationToken cancellationToken = default)
     {

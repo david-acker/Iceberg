@@ -9,4 +9,4 @@ Iceberg is a CLI application used for mapping the code dependencies in C# projec
 ### Currently Supports
 
 - [x] Upstream Method Dependencies (partial support)
-- [ ] Downstream Method Dependencies
+- [x] Downstream Method Dependencies (partial support)

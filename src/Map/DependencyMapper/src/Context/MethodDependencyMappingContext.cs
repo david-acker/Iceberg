@@ -4,17 +4,30 @@ using Microsoft.Extensions.Logging;
 
 namespace Iceberg.Map.DependencyMapper.Context;
 
-internal partial class MethodDependencyMappingContext
+public interface IMethodDependencyMappingContext
+{
+    MethodDependencyMap DependencyMap { get; init; }
+
+    Task MapUpstream(
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        CancellationToken cancellationToken = default);
+
+    Task MapDownstream(
+        IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        CancellationToken cancellationToken = default);
+}
+
+internal partial class MethodDependencyMappingContext : IMethodDependencyMappingContext
 {
     private readonly ILogger<MethodDependencyMappingContext> _logger;
-    private readonly MethodSolutionContext _solutionContext;
+    private readonly IMethodSolutionContext _solutionContext;
 
     public MethodDependencyMap DependencyMap { get; init; } 
         = new MethodDependencyMap(new MethodMetadataComparer());
 
     public MethodDependencyMappingContext(
         ILoggerFactory loggerFactory,
-        MethodSolutionContext solutionContext)
+        IMethodSolutionContext solutionContext)
     {
         _logger = loggerFactory.CreateLogger<MethodDependencyMappingContext>();
         _solutionContext = solutionContext;
