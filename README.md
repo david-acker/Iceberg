@@ -19,7 +19,7 @@ Iceberg is a CLI application used for mapping the code dependencies in C# projec
 > `load [-p|--path <file path(s)>]`
 > 
 > Options:
-> `-p | --path` (required) The file path for of single solution file (.sln) or one or more project files (.csproj) to load into Iceberg.
+> `-p | --path` (required) The file path of a single solution file (.sln) or one or more project files (.csproj) to load into Iceberg.
 
 > 
 > **unload** - Unloads any solution or projects(s) that are currently loaded.
