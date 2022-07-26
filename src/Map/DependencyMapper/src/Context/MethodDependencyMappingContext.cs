@@ -89,7 +89,7 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
             return;
         }
 
-        if (DependencyMap.All(x => string.Equals(x.Key.DisplayName, methodEntryPoint.DisplayName)))
+        if (DependencyMap.Any(x => string.Equals(x.Key.DisplayName, methodEntryPoint.DisplayName)))
         {
             Log.DuplicateMethodEntryPoint(_logger, methodEntryPoint.DisplayName);
             return;
