@@ -313,8 +313,8 @@ internal class MapCommand : ICommand
 
                 var maximumDistanceString = result.Tokens.Single().Value;
 
-                if (!string.IsNullOrEmpty(maximumDistanceString)
-                    || int.TryParse(maximumDistanceString, out int maximumDistance))
+                if (string.IsNullOrEmpty(maximumDistanceString)
+                    || !int.TryParse(maximumDistanceString, out int maximumDistance))
                 {
                     result.ErrorMessage = "The maximum distance must be a valid integer greater than zero.";
                     return null;
