@@ -186,7 +186,7 @@ internal class MapCommand : ICommand
 
         foreach (var dependencyMethodMetadata in generatedMethodDependencyMap[entryPointMethodMetadata])
         {
-            Traverse(generatedMethodDependencyMap, trimmedMethodDependencyMap, dependencyMethodMetadata, remainingDegreeOfSeparation);
+            Traverse(generatedMethodDependencyMap, trimmedMethodDependencyMap, dependencyMethodMetadata, remainingDegreeOfSeparation--);
         }
     }
 
