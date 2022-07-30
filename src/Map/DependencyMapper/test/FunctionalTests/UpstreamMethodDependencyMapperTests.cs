@@ -715,6 +715,7 @@ public class UpstreamMethodDependencyMapperTests
             NullLoggerFactory.Instance, 
             methodSelectors, 
             solutionWrapper, 
+            symbolEqualityComparer,
             symbolFinder);
     }
 }

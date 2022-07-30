@@ -1,4 +1,5 @@
 ﻿using Iceberg.Map.DependencyMapper.Context;
+using Iceberg.Map.DependencyMapper.Filters.Projects;
 using Iceberg.Map.Metadata;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public interface IMethodDependencyMapper
     Task<MethodDependencyMap> MapDownstream(
         IMethodSolutionContext solutionContext,
         IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+        IProjectFilter? projectFilter = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -64,15 +66,18 @@ public sealed partial class MethodDependencyMapper : IMethodDependencyMapper
     public async Task<MethodDependencyMap> MapDownstream(
         IMethodSolutionContext solutionContext,
         IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+        IProjectFilter? projectFilter = null,
         CancellationToken cancellationToken = default)
     {
         Log.DownstreamMethodDependencyMappingStart(_logger);
+
+        projectFilter ??= new DefaultProjectFilter();
 
         var methodDependencyMappingContext = new MethodDependencyMappingContext(_loggerFactory, solutionContext);
 
         foreach (var entryPoint in methodEntryPoints)
         {
-            await methodDependencyMappingContext.MapDownstream(entryPoint, cancellationToken);
+            await methodDependencyMappingContext.MapDownstream(entryPoint, projectFilter, cancellationToken);
         }
 
         Log.DownstreamMethodDependencyMappingEnd(_logger);

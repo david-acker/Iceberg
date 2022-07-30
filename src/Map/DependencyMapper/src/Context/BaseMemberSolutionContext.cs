@@ -1,4 +1,5 @@
-﻿using Iceberg.Map.DependencyMapper.Wrappers;
+﻿using Iceberg.Map.DependencyMapper.Filters.Projects;
+using Iceberg.Map.DependencyMapper.Wrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
@@ -12,7 +13,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
     private readonly ILogger _logger;
     protected readonly ISolutionWrapper SolutionWrapper;
 
-    private readonly IDictionary<string, Project> _projects = new Dictionary<string, Project>();
+    private readonly IDictionary<string, IProjectWrapper> _projects = new Dictionary<string, IProjectWrapper>();
 
     public BaseMemberSolutionContext(ILoggerFactory loggerFactory, ISolutionWrapper solutionWrapper)
     {
@@ -21,7 +22,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
 
         foreach (var project in SolutionWrapper.Projects)
         {
-            _projects[project.AssemblyName] = project;
+            _projects[project.Project.AssemblyName] = project;
         }
     }
 
@@ -31,6 +32,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
 
     public abstract IAsyncEnumerable<IEntryPoint<T>> FindDownstreamDependencyEntryPoints(
         IEntryPoint<T> entryPoint,
+        IProjectFilter projectFilter,
         CancellationToken cancellationToken = default);
 
     protected bool IsAssemblyContainedInSolution(string assemblyName) => _projects.ContainsKey(assemblyName);
@@ -61,7 +63,7 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
                 continue;
             }
 
-            if (!_projects.TryGetValue(symbol.ContainingAssembly.Name, out Project? containingProject))
+            if (!_projects.TryGetValue(symbol.ContainingAssembly.Name, out IProjectWrapper? containingProjectWrapper))
             {
                 Log.SymbolNotDeclaredInSolution(_logger, symbol.Name);
                 continue;
@@ -87,10 +89,10 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
                 continue;
             }
 
-            var document = containingProject!.GetDocument(sourceTree);
+            var document = containingProjectWrapper!.Project!.GetDocument(sourceTree);
             if (document is null)
             {
-                var projectName = containingProject.Name;
+                var projectName = containingProjectWrapper.Project.Name;
                 var syntaxTreeFilePath = Path.GetFileName(sourceTree.FilePath);
 
                 Log.ProjectDoesNotContainDocument(_logger, projectName, syntaxTreeFilePath);
@@ -110,12 +112,12 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
 
     public async Task<IEnumerable<IEntryPoint<T>>> FindEntryPoints(
         Func<T, SemanticModel, bool> predicate,
-        string? projectName = null,
+        IProjectFilter projectFilter,
         CancellationToken cancellationToken = default)
     {
         var matchingEntryPoints = new ConcurrentBag<EntryPoint<T>>();
 
-        await Parallel.ForEachAsync(GetDocumentsToSearch(projectName, cancellationToken),
+        await Parallel.ForEachAsync(GetDocumentsToSearch(projectFilter, cancellationToken),
             async (documentMetadata, cancellationToken) =>
             {
                 var rootNode = await documentMetadata.SyntaxTree.GetRootAsync(cancellationToken);
@@ -138,16 +140,14 @@ public abstract partial class BaseMemberSolutionContext<T> where T : MemberDecla
     }
 
     private async IAsyncEnumerable<DocumentMetadata> GetDocumentsToSearch(
-        string? projectName = null,
+        IProjectFilter projectFilter,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var projectsToSearch = projectName == null
-            ? _projects.Values
-            : _projects.Values.Where(p => p.Name.Equals(projectName));
+        var filteredProjects = projectFilter.Filter(_projects.Values);
 
-        foreach (var project in projectsToSearch)
+        foreach (var project in filteredProjects)
         {
-            foreach (var document in project.Documents
+            foreach (var document in project.Project.Documents
                 .Where(doc => doc.SupportsSyntaxTree && doc.SupportsSyntaxTree))
             {
                 var syntaxTreeTask = document.GetSyntaxTreeAsync(cancellationToken);

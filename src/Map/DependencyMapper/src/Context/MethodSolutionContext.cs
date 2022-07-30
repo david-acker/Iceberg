@@ -1,4 +1,5 @@
-﻿using Iceberg.Map.DependencyMapper.Selectors;
+﻿using Iceberg.Map.DependencyMapper.Filters.Projects;
+using Iceberg.Map.DependencyMapper.Selectors;
 using Iceberg.Map.DependencyMapper.Wrappers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,12 +17,13 @@ public interface IMethodSolutionContext
 
     IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDownstreamDependencyEntryPoints(
         IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        IProjectFilter projectFilter,
         CancellationToken cancellationToken = default);
 
     Task<IEnumerable<IEntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
         string className,
         string? methodName = null,
-        string? projectName = null,
+        IProjectFilter? projectFiler = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -29,16 +31,19 @@ public interface IMethodSolutionContext
 public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<MethodDeclarationSyntax>, IMethodSolutionContext
 {
     private readonly ILogger _logger;
-    private readonly ISymbolFinderWrapper _symbolFinder;
     private readonly IEnumerable<IMethodSelector> _methodSelectors;
+    private readonly ISymbolEqualityComparerWrapper _symbolEqualityComparer;
+    private readonly ISymbolFinderWrapper _symbolFinder;
 
     public MethodSolutionContext(ILoggerFactory loggerFactory,
         IEnumerable<IMethodSelector> methodSelectors,
         ISolutionWrapper solution,
+        ISymbolEqualityComparerWrapper symbolEqualityComparer,
         ISymbolFinderWrapper symbolFinder) : base(loggerFactory, solution)
     {
         _logger = loggerFactory.CreateLogger<MethodSolutionContext>();
         _methodSelectors = methodSelectors;
+        _symbolEqualityComparer = symbolEqualityComparer;
         _symbolFinder = symbolFinder;
     }
 
@@ -99,6 +104,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
 
     public override async IAsyncEnumerable<IEntryPoint<MethodDeclarationSyntax>> FindDownstreamDependencyEntryPoints(
         IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        IProjectFilter projectFilter,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (entryPoint.Symbol is null)
@@ -109,7 +115,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
 
         var referencedSymbols = await _symbolFinder.FindReferences(entryPoint.Symbol, SolutionWrapper, cancellationToken);
 
-        await foreach (var consumingMethodSymbol in GetConsumingMethodSymbols(referencedSymbols, SolutionWrapper, cancellationToken))
+        await foreach (var consumingMethodSymbol in GetConsumingMethodSymbols(referencedSymbols, SolutionWrapper, entryPoint, projectFilter, cancellationToken))
         {
             if (consumingMethodSymbol is null)
                 continue;
@@ -124,16 +130,18 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
     private async IAsyncEnumerable<ISymbol?> GetConsumingMethodSymbols(
         IEnumerable<ReferencedSymbol> referencedSymbols,
         ISolutionWrapper solutionWrapper,
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
+        IProjectFilter projectFilter,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         foreach (var referencedSymbol in referencedSymbols)
         {
-            // TODO: Use an injected "ProjectFilter" to handle which projects are excluded.
-            var sourceLocations = referencedSymbol.Locations.Where(location => !location.Document.Project.Name.Contains("Test"));
+            var sourceLocations = referencedSymbol.Locations.Where(location =>
+                projectFilter.Predicate(new ProjectWrapper(location.Document.Project)));
 
             foreach (var sourceLocation in sourceLocations)
             {
-                yield return await GetConsumingMethodSymbol(sourceLocation, solutionWrapper, cancellationToken);
+                yield return await GetConsumingMethodSymbol(sourceLocation, solutionWrapper, entryPoint, cancellationToken);
             }
         }
     }
@@ -141,6 +149,7 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
     private async Task<ISymbol?> GetConsumingMethodSymbol(
         ReferenceLocation referenceLocation,
         ISolutionWrapper solutionWrapper,
+        IEntryPoint<MethodDeclarationSyntax> entryPoint,
         CancellationToken cancellationToken = default)
     {
         var location = referenceLocation.Location;
@@ -169,13 +178,18 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
         if (semanticModel is null)
             return null;
 
-        return semanticModel.GetDeclaredSymbol(containingMethodDeclarationNode, cancellationToken);
+        var consumingSymbol = semanticModel.GetDeclaredSymbol(containingMethodDeclarationNode, cancellationToken);
+        if (consumingSymbol is null
+            || _symbolEqualityComparer.Equals(entryPoint.Symbol, consumingSymbol))
+            return null;
+
+        return consumingSymbol;
     }
 
     public async Task<IEnumerable<IEntryPoint<MethodDeclarationSyntax>>> FindMethodEntryPoints(
         string className, 
         string? methodName = null,
-        string? projectName = null,
+        IProjectFilter? projectFilter = null,
         CancellationToken cancellationToken = default)
     {
         Func<MethodDeclarationSyntax, SemanticModel, bool> predicate =
@@ -204,7 +218,10 @@ public sealed partial class MethodSolutionContext : BaseMemberSolutionContext<Me
                     && string.Equals(classSymbol.Name, className, StringComparison.OrdinalIgnoreCase);
             };
 
-        var entryPointMatches = await FindEntryPoints(predicate, projectName, cancellationToken);
+        // TODO: Handle this close to when the input is received from the user.
+        projectFilter ??= new DefaultProjectFilter();
+
+        var entryPointMatches = await FindEntryPoints(predicate, projectFilter, cancellationToken);
 
         return entryPointMatches.DistinctBy(x => x.DisplayName);
     }

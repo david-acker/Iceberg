@@ -253,10 +253,7 @@ public class DownstreamMethodDependencyMapperTests
         {
             {
                 new MethodMetadata("MyClass.Fibonacci(int, int, int)", "MyClass.cs"),
-                new HashSet<MethodMetadata>
-                {
-                    new MethodMetadata("MyClass.Fibonacci(int, int, int)", "MyClass.cs")
-                }
+                new HashSet<MethodMetadata>()
             }
         };
 
@@ -402,7 +399,7 @@ public class DownstreamMethodDependencyMapperTests
         AssertGeneratedDependencyMap(expected, actual);
     }
 
-    [Fact(Skip = "Unknown Issue")]
+    [Fact]
     public async Task OverriddenVirtualMethodCallingBaseImplementation()
     {
         // Arrange
@@ -719,6 +716,7 @@ public class DownstreamMethodDependencyMapperTests
             NullLoggerFactory.Instance,
             methodSelectors,
             solutionWrapper,
+            symbolEqualityComparer,
             symbolFinder);
     }
 }

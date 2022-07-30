@@ -1,6 +1,7 @@
 ﻿using Iceberg.Export;
 using Iceberg.Map.DependencyMapper;
 using Iceberg.Map.DependencyMapper.Context;
+using Iceberg.Map.DependencyMapper.Filters.Projects;
 using Iceberg.Map.Metadata;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -63,11 +64,17 @@ internal class MapCommand : ICommand
 
             var cancellationTokenSource = new CancellationTokenSource();
 
+            IProjectFilter projectFilter = string.IsNullOrWhiteSpace(projectOptionValue)
+                ? new DefaultProjectFilter()
+                : new ProjectNameFilter(
+                    new[] { projectOptionValue },
+                    ProjectNameFilter.ProjectNameFilterType.Include);
+
             var matchingMethodEntryPoints =
                 await methodSolutionContext.FindMethodEntryPoints(
                     classOptionValue,
                     methodOptionValue,
-                    projectOptionValue,
+                    projectFilter,
                     cancellationTokenSource.Token);
 
             if (!matchingMethodEntryPoints.Any())
@@ -133,10 +140,16 @@ internal class MapCommand : ICommand
 
         if (mappingFlow == MappingFlow.Downstream)
         {
+            // TODO: Provide via CLI option or solution-level configuration.
+            var testProjectExclusionFilter = new ProjectNameContainsFilter(
+                "Test", 
+                ProjectNameContainsFilter.ProjectNameContainsFilterType.Exclude);
+
             return await methodDependencyMapper.MapDownstream(
                 solutionContext,
                 entryPoints,
-                cancellationToken);
+                testProjectExclusionFilter,
+                cancellationToken: cancellationToken);
         }
         else if (mappingFlow == MappingFlow.Upstream)
         {
