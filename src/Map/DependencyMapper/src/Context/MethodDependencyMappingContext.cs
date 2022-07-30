@@ -1,4 +1,5 @@
-﻿using Iceberg.Map.Metadata;
+﻿using Iceberg.Map.DependencyMapper.Filters.Projects;
+using Iceberg.Map.Metadata;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,7 @@ public interface IMethodDependencyMappingContext
 
     Task MapDownstream(
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IProjectFilter projectFilter,
         CancellationToken cancellationToken = default);
 }
 
@@ -81,6 +83,7 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
 
     public async Task MapDownstream(
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        IProjectFilter projectFilter,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(methodEntryPoint.DisplayName))
@@ -102,7 +105,7 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
         var dependencyEntryPoints = new HashSet<IEntryPoint<MethodDeclarationSyntax>>();
         var dependencyEntryPointMetadata = new HashSet<MethodMetadata>();
 
-        await foreach (var dependencyEntryPoint in _solutionContext.FindDownstreamDependencyEntryPoints(methodEntryPoint, cancellationToken))
+        await foreach (var dependencyEntryPoint in _solutionContext.FindDownstreamDependencyEntryPoints(methodEntryPoint, projectFilter, cancellationToken))
         {
             if (dependencyEntryPoints.Any(x => string.Equals(x.DisplayName, dependencyEntryPoint.DisplayName)))
             {
@@ -121,7 +124,7 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
 
         foreach (var dependencyEntryPoint in dependencyEntryPoints)
         {
-            await MapDownstream(dependencyEntryPoint, cancellationToken);
+            await MapDownstream(dependencyEntryPoint, projectFilter, cancellationToken);
         }
     }
 
