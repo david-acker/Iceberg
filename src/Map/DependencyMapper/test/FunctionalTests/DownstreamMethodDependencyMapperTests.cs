@@ -1,9 +1,5 @@
-﻿using Iceberg.Map.DependencyMapper.Context;
-using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
-using Iceberg.Map.DependencyMapper.Selectors;
-using Iceberg.Map.DependencyMapper.Wrappers;
+﻿using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
 using Iceberg.Map.Metadata;
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
 
@@ -62,7 +58,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -71,7 +67,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Theory]
@@ -129,7 +125,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -138,7 +134,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact]
@@ -207,7 +203,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -216,7 +212,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact]
@@ -258,7 +254,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -267,7 +263,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Theory]
@@ -326,7 +322,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -335,7 +331,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Theory]
@@ -387,7 +383,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -396,7 +392,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact]
@@ -453,7 +449,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -462,7 +458,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact]
@@ -509,7 +505,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -518,7 +514,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact(Skip = "Overload Resolution Issue")]
@@ -574,7 +570,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -583,7 +579,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
     [Fact(Skip = "Overload Resolution Issue")]
@@ -661,7 +657,7 @@ public class DownstreamMethodDependencyMapperTests
         };
 
         var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = CreateMethodSolutionContext(workspace);
+        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
@@ -670,54 +666,7 @@ public class DownstreamMethodDependencyMapperTests
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
-        AssertGeneratedDependencyMap(expected, actual);
-    }
-
-    private static void AssertGeneratedDependencyMap(MethodDependencyMap expected, MethodDependencyMap actual)
-    {
-        // TODO: Add more assertions and return better/more applicable map data on failed assertions
-
-        Assert.Equal(expected.Count, actual.Count);
-
-        Assert.True(expected.Keys.Select(x => x.DisplayName).ToHashSet()
-            .SetEquals(actual.Keys.Select(x => x.DisplayName).ToHashSet()));
-
-        foreach (var key in expected.Keys)
-        {
-            var expectedValue = expected[key];
-            var actualValue = actual[key];
-
-            Assert.Equal(expectedValue.Count, actualValue.Count);
-
-            Assert.True(expectedValue.Select(x => x.DisplayName).ToHashSet()
-                .SetEquals(actualValue.Select(x => x.DisplayName).ToHashSet()));
-
-            Assert.Equal(expectedValue.Select(x => x.SourcePath).OrderBy(x => x),
-                actualValue.Select(x => x.SourcePath).OrderBy(x => x));
-        }
-    }
-
-    // TODO: Clean up.
-    private MethodSolutionContext CreateMethodSolutionContext(Workspace workspace)
-    {
-        var symbolEqualityComparer = new SymbolEqualityComparerWrapper();
-        var symbolFinder = new SymbolFinderWrapper();
-
-        var methodSelectors = new IMethodSelector[]
-        {
-            new AbstractOrVirtualMethodSelector(symbolEqualityComparer, symbolFinder),
-            new ConcreteMethodSelector(),
-            new OverriddenMethodSelector(symbolEqualityComparer)
-        };
-
-        var solutionWrapper = new SolutionWrapper(workspace.CurrentSolution);
-
-        return new MethodSolutionContext(
-            NullLoggerFactory.Instance,
-            methodSelectors,
-            solutionWrapper,
-            symbolEqualityComparer,
-            symbolFinder);
+        TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 }
 
