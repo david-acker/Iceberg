@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Map\Metadata\src\Iceberg.Map.Metadata.csproj" />
-    <ProjectReference Include="..\src\Iceberg.Export.csproj" />
+    <ProjectReference Include="..\..\..\Map\Metadata\src\Iceberg.Map.Metadata.csproj" />
+    <ProjectReference Include="..\..\src\Iceberg.Export.csproj" />
   </ItemGroup>
 
 </Project>
