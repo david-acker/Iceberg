@@ -4,5 +4,7 @@ namespace Iceberg.CommandLine.Commands;
 
 internal interface ICommand
 {
-   Command Value { get; }
+    Command Value { get; }
+    string Name { get; }
+    string Description { get; }
 }

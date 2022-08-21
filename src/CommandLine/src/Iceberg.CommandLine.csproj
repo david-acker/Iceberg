@@ -28,4 +28,8 @@
     <ProjectReference Include="..\..\Map\Metadata\src\Iceberg.Map.Metadata.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+	<InternalsVisibleTo Include="Iceberg.CommandLine.Tests" />
+  </ItemGroup>
+
 </Project>

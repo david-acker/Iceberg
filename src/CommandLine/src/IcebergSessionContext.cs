@@ -10,7 +10,7 @@ internal interface IIcebergSessionContext
     Solution? Solution { get; }
     bool IsSolutionLoaded { get; }
     Task LoadSolution(string solutionPath);
-    Task LoadProjects(string[] projectPaths);
+    Task LoadProjects(IEnumerable<string> projectPaths);
     void UnloadSolution();
 
     string? LastGeneratedDependencyMap { get; set; }
@@ -53,7 +53,7 @@ internal sealed partial class IcebergSessionContext : IIcebergSessionContext
         });
     }
 
-    public async Task LoadProjects(string[] projectPaths)
+    public async Task LoadProjects(IEnumerable<string> projectPaths)
     {
         await Load(async () =>
         {
