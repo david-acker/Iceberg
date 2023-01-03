@@ -11,6 +11,7 @@ public interface IMethodDependencyMappingContext
 
     Task MapUpstream(
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        int? depth = null,
         CancellationToken cancellationToken = default);
 
     Task MapDownstream(
@@ -37,6 +38,7 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
 
     public async Task MapUpstream(
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        int? depth = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(methodEntryPoint.DisplayName))
@@ -75,9 +77,19 @@ internal partial class MethodDependencyMappingContext : IMethodDependencyMapping
 
         DependencyMap[entryPointMetadata] = dependencyEntryPointMetadata;
 
+        int? newDepth = null;
+        if (depth.HasValue)
+        {
+            if (depth.Value == 0)
+            {
+                return;
+            }
+            newDepth = depth.Value - 1;
+        }
+
         foreach (var dependencyEntryPoint in dependencyEntryPoints)
         {
-            await MapUpstream(dependencyEntryPoint, cancellationToken);
+            await MapUpstream(dependencyEntryPoint, newDepth, cancellationToken);
         }
     }
 

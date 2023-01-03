@@ -11,11 +11,13 @@ public interface IMethodDependencyMapper
     Task<MethodDependencyMap> MapUpstream(
         IMethodSolutionContext solutionContext,
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        int? depth = null,
         CancellationToken cancellationToken = default);
 
     Task<MethodDependencyMap> MapUpstream(
         IMethodSolutionContext solutionContext,
         IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+        int? depth = null,
         CancellationToken cancellationToken = default);
 
     Task<MethodDependencyMap> MapDownstream(
@@ -39,14 +41,16 @@ public sealed partial class MethodDependencyMapper : IMethodDependencyMapper
     public async Task<MethodDependencyMap> MapUpstream(
         IMethodSolutionContext solutionContext, 
         IEntryPoint<MethodDeclarationSyntax> methodEntryPoint,
+        int? depth = null,
         CancellationToken cancellationToken = default)
     {
-        return await MapUpstream(solutionContext, new[] { methodEntryPoint }, cancellationToken);
+        return await MapUpstream(solutionContext, new[] { methodEntryPoint }, depth, cancellationToken);
     }
 
     public async Task<MethodDependencyMap> MapUpstream(
        IMethodSolutionContext solutionContext,
        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> methodEntryPoints,
+       int? depth = null,
        CancellationToken cancellationToken = default)
     {
         Log.UpstreamMethodDependencyMappingStart(_logger);
@@ -55,7 +59,7 @@ public sealed partial class MethodDependencyMapper : IMethodDependencyMapper
 
         foreach (var entryPoint in methodEntryPoints)
         {
-            await methodDependencyMappingContext.MapUpstream(entryPoint, cancellationToken);
+            await methodDependencyMappingContext.MapUpstream(entryPoint, depth, cancellationToken);
         }
         
         Log.UpstreamMethodDependencyMappingEnd(_logger);

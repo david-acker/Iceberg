@@ -84,8 +84,10 @@ internal sealed partial class MapCommandHandler : IMapCommandHandler
                 methodDependencyMapper,
                 methodSolutionContext,
                 matchingMethodEntryPoints,
+                distance,
                 cancellationTokenSource.Token);
 
+        // TODO: Remove now that trimming is handled during mapping.
         if (distance.HasValue)
         {
             var entryPointMethodMetadata = methodDependencyMap.Keys
@@ -122,6 +124,7 @@ internal sealed partial class MapCommandHandler : IMapCommandHandler
        IMethodDependencyMapper methodDependencyMapper,
        IMethodSolutionContext solutionContext,
        IEnumerable<IEntryPoint<MethodDeclarationSyntax>> entryPoints,
+       int? depth,
        CancellationToken cancellationToken)
     {
         // TODO: Handle zero or multiple matching entry points based on additional input from the user.
@@ -145,6 +148,7 @@ internal sealed partial class MapCommandHandler : IMapCommandHandler
             return await methodDependencyMapper.MapUpstream(
                 solutionContext,
                 entryPoints,
+                depth,
                 cancellationToken);
         }
 
