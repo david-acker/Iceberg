@@ -3,10 +3,11 @@ using Iceberg.Map.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Iceberg.Map.DependencyMapper.FunctionalTests;
+namespace Iceberg.Map.DependencyMapper.FunctionalTests.Method.Downstream;
 
+// TODO: Clean up class and method names in test code samples.
 [ExcludeFromCodeCoverage]
-public class UpstreamMethodDependencyMapperTests
+public sealed class DownstreamMethodDependencyMapperTests
 {
     [Theory]
     [InlineData("public")]
@@ -26,12 +27,12 @@ public class UpstreamMethodDependencyMapperTests
                     Text = $@"
                         public class MyClass
                         {{
-                            public int EntryPoint()
+                            public int OtherMethod()
                             {{
-                                return OtherMethod();
+                                return EntryPoint();
                             }}
 
-                            {accessModifier} int OtherMethod()
+                            {accessModifier} int EntryPoint()
                             {{
                                 return 1;
                             }}
@@ -56,15 +57,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "EntryPoint");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -112,26 +112,25 @@ public class UpstreamMethodDependencyMapperTests
         {
             {
                 new MethodMetadata("DerivedClass.EntryPoint()", "DerivedClass.cs"),
-                new HashSet<MethodMetadata>
-                {
-                    new MethodMetadata("BaseClass.InheritedMethod()", "BaseClass.cs")
-                }
+                new HashSet<MethodMetadata>()
             },
             {
                 new MethodMetadata("BaseClass.InheritedMethod()", "BaseClass.cs"),
-                new HashSet<MethodMetadata>()
+                new HashSet<MethodMetadata>
+                {
+                    new MethodMetadata("DerivedClass.EntryPoint()", "DerivedClass.cs")
+                }
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
-        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("DerivedClass", "EntryPoint");
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("BaseClass", "InheritedMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -191,25 +190,24 @@ public class UpstreamMethodDependencyMapperTests
             {
                 new MethodMetadata("ConsumingService.EntryPoint()", "ConsumingService.cs"),
                 new HashSet<MethodMetadata>()
-                {
-                    new MethodMetadata("ConcreteService.ServiceMethod()", "ConcreteService.cs")
-                }
             },
             {
                 new MethodMetadata("ConcreteService.ServiceMethod()", "ConcreteService.cs"),
-                new HashSet<MethodMetadata>()
+                new HashSet<MethodMetadata>
+                {
+                    new MethodMetadata("ConsumingService.EntryPoint()", "ConsumingService.cs")
+                }
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
-        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("ConsumingService", "EntryPoint");
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("ConcreteService", "ServiceMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -252,15 +250,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "Fibonacci");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -309,26 +306,25 @@ public class UpstreamMethodDependencyMapperTests
         {
             {
                 new MethodMetadata("MyClass.MyMethod()", "MyClass.cs"),
-                new HashSet<MethodMetadata>
-                {
-                    new MethodMetadata("ClassWithStaticMethod.StaticMethod()", "ClassWithStaticMethod.cs")
-                }
+                new HashSet<MethodMetadata>()
             },
             {
                 new MethodMetadata("ClassWithStaticMethod.StaticMethod()", "ClassWithStaticMethod.cs"),
-                new HashSet<MethodMetadata>()
+                new HashSet<MethodMetadata>
+                {
+                    new MethodMetadata("MyClass.MyMethod()", "MyClass.cs")
+                }
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
-        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "MyMethod");
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("ClassWithStaticMethod", "StaticMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -381,15 +377,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("DerivedClass", "VirtualMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -436,26 +431,25 @@ public class UpstreamMethodDependencyMapperTests
         {
             {
                 new MethodMetadata("DerivedClass.VirtualMethod()", "DerivedClass.cs"),
-                new HashSet<MethodMetadata>
-                {
-                    new MethodMetadata("BaseClass.VirtualMethod()", "BaseClass.cs")
-                }
+                new HashSet<MethodMetadata>()
             },
             {
                 new MethodMetadata("BaseClass.VirtualMethod()", "BaseClass.cs"),
-                new HashSet<MethodMetadata>()
+                new HashSet<MethodMetadata>
+                {
+                    new MethodMetadata("DerivedClass.VirtualMethod()", "DerivedClass.cs")
+                }
             },
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
-        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("DerivedClass", "VirtualMethod");
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("BaseClass", "VirtualMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -503,15 +497,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("DerivedClass", "AbstractMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -568,15 +561,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "MyMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
@@ -655,15 +647,14 @@ public class UpstreamMethodDependencyMapperTests
             }
         };
 
-        var workspace = TestUtilities.CreateWorkspace(new[] { projectTemplate });
-        var solutionContext = TestUtilities.CreateMethodSolutionContext(workspace);
+        var solutionContext = await TestUtilities.SetupMethodSolutionContext(projectTemplate);
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
         var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MainClass", "EntryPoint");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
-        var actual = await mapper.MapUpstream(solutionContext, selectedEntryPoint);
+        var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });
 
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }

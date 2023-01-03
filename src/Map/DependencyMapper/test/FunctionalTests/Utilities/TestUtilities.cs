@@ -1,37 +1,49 @@
-﻿using Microsoft.CodeAnalysis.Text;
-using Microsoft.CodeAnalysis;
-using System.Diagnostics.CodeAnalysis;
-using Iceberg.Map.DependencyMapper.Context;
+﻿using Iceberg.Map.DependencyMapper.Context;
 using Iceberg.Map.DependencyMapper.Selectors;
 using Iceberg.Map.DependencyMapper.Wrappers;
-using Microsoft.Extensions.Logging.Abstractions;
 using Iceberg.Map.Metadata;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
 
 [ExcludeFromCodeCoverage]
-public static class TestUtilities
+internal static class TestUtilities
 {
-    public static ProjectInfo CreateProjectInfo(string projectName)
-    {
-        var projectId = ProjectId.CreateNewId();
-        var versionStamp = VersionStamp.Create();
+    public static async Task<MethodSolutionContext> SetupMethodSolutionContext(ProjectTemplate projectTemplate) =>
+        await SetupMethodSolutionContext(new[] { projectTemplate });
 
-        return ProjectInfo.Create(
-            projectId,
-            versionStamp,
-            projectName,
-            projectName,
-            LanguageNames.CSharp);
+    public static async Task<MethodSolutionContext> SetupMethodSolutionContext(ProjectTemplate[] projectTemplates)
+    {
+        var workspace = CreateWorkspace(projectTemplates);
+
+        var compilations = await Task.WhenAll(
+            workspace.CurrentSolution.Projects.Select(x => x.GetCompilationAsync()));
+
+        foreach (var compilation in compilations)
+        {
+            Assert.DoesNotContain(compilation!.GetDiagnostics(),
+                diagnostic => diagnostic.Severity == DiagnosticSeverity.Error || diagnostic.Severity == DiagnosticSeverity.Warning);
+        }
+
+        return CreateMethodSolutionContext(workspace);
     }
 
-    public static Workspace CreateWorkspace(IEnumerable<ProjectTemplate> projectTemplates)
+    private static Workspace CreateWorkspace(IEnumerable<ProjectTemplate> projectTemplates)
     {
         var workspace = new AdhocWorkspace();
 
+        var references = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => !assembly.IsDynamic)
+            .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
+            .Cast<MetadataReference>();
+
         foreach (var projectTemplate in projectTemplates)
         {
-            var projectInfo = CreateProjectInfo(projectTemplate.ProjectName);
+            var projectInfo = CreateProjectInfo(projectTemplate.ProjectName, references);
             var project = workspace.AddProject(projectInfo);
 
             foreach (var documentTemplate in projectTemplate.Documents)
@@ -42,6 +54,21 @@ public static class TestUtilities
         }
 
         return workspace;
+    }
+
+    private static ProjectInfo CreateProjectInfo(string projectName, IEnumerable<MetadataReference> references)
+    {
+        var projectId = ProjectId.CreateNewId();
+        var versionStamp = VersionStamp.Create();
+
+        return ProjectInfo.Create(
+            projectId,
+            versionStamp,
+            projectName,
+            projectName,
+            LanguageNames.CSharp,
+            metadataReferences: references,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 
     public static MethodSolutionContext CreateMethodSolutionContext(Workspace workspace)
@@ -72,8 +99,10 @@ public static class TestUtilities
 
         Assert.Equal(expected.Count, actual.Count);
 
-        Assert.True(expected.Keys.Select(x => x.DisplayName).ToHashSet()
-            .SetEquals(actual.Keys.Select(x => x.DisplayName).ToHashSet()));
+        var expectedDisplayNames = expected.Keys.Select(x => x.DisplayName).ToHashSet();
+        var actualDisplayNames = actual.Keys.Select(x => x.DisplayName).ToHashSet();
+
+        Assert.True(expectedDisplayNames.SetEquals(actualDisplayNames));
 
         foreach (var key in expected.Keys)
         {
