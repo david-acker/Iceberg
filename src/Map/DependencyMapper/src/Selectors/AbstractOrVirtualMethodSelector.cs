@@ -26,9 +26,13 @@ public sealed class AbstractOrVirtualMethodSelector : IMethodImplementationSelec
         var abstractOrVirtualMethodSymbols = candidateSymbols
             .Where(symbol => symbol.IsAbstract || symbol.IsVirtual);
 
-        return (await FindImplementations(abstractOrVirtualMethodSymbols, solutionWrapper, cancellationToken))
+        var allImplementations = (await FindImplementations(abstractOrVirtualMethodSymbols, solutionWrapper, cancellationToken));
+
+        var filteredImplemenations = allImplementations
             .Where(symbol => !_symbolEqualityComparerWrapper.Equals(symbol, entryPoint.Symbol))
             .ToList();
+
+        return filteredImplemenations;
     }
 
     private async Task<IEnumerable<ISymbol>> FindImplementations(
@@ -39,9 +43,8 @@ public sealed class AbstractOrVirtualMethodSelector : IMethodImplementationSelec
         var implementationSymbolTasks = symbols
             .Select(symbol => _symbolFinderWrapper.FindImplementations(symbol, solutionWrapper, cancellationToken));
 
-        //return (await Task.WhenAll(implementationSymbolTasks)).SelectMany(symbols => symbols);
-
-        var result = (await Task.WhenAll(implementationSymbolTasks)).SelectMany(symbols => symbols);
-        return result;
+        var implementationSymbols = (await Task.WhenAll(implementationSymbolTasks)).SelectMany(symbols => symbols);
+        
+        return implementationSymbols;
     }
 }
