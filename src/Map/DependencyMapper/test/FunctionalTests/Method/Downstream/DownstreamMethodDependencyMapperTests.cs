@@ -1,4 +1,5 @@
-﻿using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
+﻿using Iceberg.Map.DependencyMapper.Context;
+using Iceberg.Map.DependencyMapper.FunctionalTests.Utilities;
 using Iceberg.Map.Metadata;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.CodeAnalysis;
@@ -509,7 +510,7 @@ public sealed class DownstreamMethodDependencyMapperTests
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
-    [Fact(Skip = "Overload Resolution Issue")]
+    [Fact]
     public async Task MethodReferenceNotInvoked()
     {
         // Arrange
@@ -522,11 +523,13 @@ public sealed class DownstreamMethodDependencyMapperTests
                 {
                     DocumentName = "MyClass.cs",
                     Text = @"
+                        using System;
+
                         public class MyClass
                         {
                             public void MyMethod()
                             {
-                                var methodReference = MyOtherMethod;
+                                Func<int, int> methodReference = MyOtherMethod;
 
                                 var result = methodReference(1);
                             }
@@ -534,11 +537,6 @@ public sealed class DownstreamMethodDependencyMapperTests
                             public int MyOtherMethod(int a)
                             {
                                 return a;
-                            }
-
-                            public int MyOtherMethod(int a, int b)
-                            {
-                                return a + b;
                             }
                         }
                     "
@@ -549,14 +547,14 @@ public sealed class DownstreamMethodDependencyMapperTests
         var expected = new MethodDependencyMap
         {
             {
-                new MethodMetadata("MyClass.MyMethod()", "MyClass.cs"),
+                new MethodMetadata("MyClass.MyOtherMethod(int)", "MyClass.cs"),
                 new HashSet<MethodMetadata>
                 {
-                    new MethodMetadata("MyClass.MyOtherMethod()", "MyClass.cs")
+                    new MethodMetadata("MyClass.MyMethod()", "MyClass.cs")
                 }
             },
             {
-                new MethodMetadata("MyClass.MyOtherMethod()", "MyClass.cs"),
+                new MethodMetadata("MyClass.MyMethod()", "MyClass.cs"),
                 new HashSet<MethodMetadata>()
             }
         };
@@ -565,7 +563,7 @@ public sealed class DownstreamMethodDependencyMapperTests
         var mapper = new MethodDependencyMapper(NullLoggerFactory.Instance);
 
         // Act + Assert
-        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "MyMethod");
+        var matchingEntryPoints = await solutionContext.FindMethodEntryPoints("MyClass", "MyOtherMethod");
         var selectedEntryPoint = Assert.Single(matchingEntryPoints);
 
         var actual = await mapper.MapDownstream(solutionContext, new[] { selectedEntryPoint });

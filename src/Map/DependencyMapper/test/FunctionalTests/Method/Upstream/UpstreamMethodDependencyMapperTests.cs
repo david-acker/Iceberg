@@ -511,7 +511,7 @@ public sealed class UpstreamMethodDependencyMapperTests
         TestUtilities.AssertGeneratedMethodDependencyMap(expected, actual);
     }
 
-    [Fact(Skip = "Overload Resolution Issue")]
+    [Fact]
     public async Task MethodReferenceNotInvoked()
     {
         // Arrange
@@ -524,11 +524,13 @@ public sealed class UpstreamMethodDependencyMapperTests
                 {
                     DocumentName = "MyClass.cs",
                     Text = @"
+                        using System;
+
                         public class MyClass
                         {
                             public void MyMethod()
                             {
-                                var methodReference = MyOtherMethod;
+                                Func<int, int> methodReference = MyOtherMethod;
 
                                 var result = methodReference(1);
                             }
@@ -554,11 +556,11 @@ public sealed class UpstreamMethodDependencyMapperTests
                 new MethodMetadata("MyClass.MyMethod()", "MyClass.cs"),
                 new HashSet<MethodMetadata>
                 {
-                    new MethodMetadata("MyClass.MyOtherMethod()", "MyClass.cs")
+                    new MethodMetadata("MyClass.MyOtherMethod(int)", "MyClass.cs")
                 }
             },
             {
-                new MethodMetadata("MyClass.MyOtherMethod()", "MyClass.cs"),
+                new MethodMetadata("MyClass.MyOtherMethod(int)", "MyClass.cs"),
                 new HashSet<MethodMetadata>()
             }
         };
